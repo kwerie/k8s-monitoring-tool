@@ -1,11 +1,10 @@
 ﻿using k8s;
 using K8sMonitoringTool.Service;
 using K8sMonitoringTool.Shared;
-
-namespace K8sMonitoringTool;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
+namespace K8sMonitoringTool;
 
 internal class Program
 {
