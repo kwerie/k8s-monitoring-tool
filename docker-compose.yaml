@@ -9,3 +9,5 @@ services:
       MARIADB_PASSWORD: local
       MARIADB_DATABASE: local
       MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
