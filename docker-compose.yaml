@@ -1,0 +1,11 @@
+---
+
+services:
+  database:
+    container_name: k8s-monitoring-tool-db
+    image: mariadb
+    environment:
+      MARIADB_USER: local
+      MARIADB_PASSWORD: local
+      MARIADB_DATABASE: local
+      MARIADB_ROOT_PASSWORD: root

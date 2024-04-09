@@ -1,0 +1,9 @@
+# IDE
+.idea/
+.vscode/
+# K8s config
+.kube/config
+
+# General C#/.NET
+bin/
+obj/
