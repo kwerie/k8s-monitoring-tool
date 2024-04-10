@@ -48,20 +48,19 @@ internal class Program
 
         var namespaces = clusterNamespaceService.GetAll();
         var metricsService = builder.Services.GetRequiredService<MetricsService>();
-        // TODO - find out a (better) way of re-rendering the screen in place
-        // If this cannot be done in a ConsoleApp, maybe convert this into an API and use a separate frontend for it?
         var timer = new Timer(1000);
+
+        // Fetch cluster data every second
         timer.Elapsed += async (_, _) =>
         {
-            // Console.Clear();
-            Console.SetCursorPosition(0, 0);
+            Console.SetCursorPosition(0, 0); // Reset the cursor position, so the data won't constantly blink
             await metricsService.NodesMetrics();
+
             foreach (var ns in namespaces)
             {
                 await metricsService.PodMetricsForNamespace(ns.Name);
             }
-            
-            
+
             Console.Write("Press any key to exit...");
         };
 

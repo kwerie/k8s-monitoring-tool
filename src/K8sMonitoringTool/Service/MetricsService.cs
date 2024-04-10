@@ -1,3 +1,4 @@
+using System.Text;
 using ConsoleTables;
 using k8s;
 using k8s.Models;
@@ -15,7 +16,7 @@ public class MetricsService(KubeClient kubeClient)
         {
             var nodeName = item.Metadata.Name;
             var cpuUsage = "";
-            var memoryUsage = "";
+            var memUsage = "";
 
             foreach (var metric in item.Usage)
             {
@@ -23,16 +24,16 @@ public class MetricsService(KubeClient kubeClient)
                 {
                     case "cpu":
                         // Convert form n to m
-                        cpuUsage = $"{metric.Value * 1024:N0}m";
+                        cpuUsage = ConvertToHumanReadable(metric);
                         break;
                     case "memory":
                         // Convert from Ki to Mi
-                        memoryUsage = $"{metric.Value / 1024 / 1024:#}Mi";
+                        memUsage = ConvertToHumanReadable(metric);
                         break;
                 }
             }
 
-            table.AddRow(nodeName, cpuUsage, memoryUsage);
+            table.AddRow(nodeName, cpuUsage, memUsage);
         }
 
         table.Options.EnableCount = false;
@@ -42,7 +43,7 @@ public class MetricsService(KubeClient kubeClient)
     public async Task PodMetricsForNamespace(string namespaceName)
     {
         var podMetrics = await kubeClient.GetKubernetesPodsMetricsByNamespaceAsync(namespaceName).ConfigureAwait(false);
-        var table = new ConsoleTable("NAMESPACE", "POD NAME", "CONTAINER NAME", "CPU(cores)", "MEMORY(bytes)");
+        var table = new ConsoleTable("NAMESPACE", "POD NAME", "CONTAINER NAME(S)", "CPU(cores)", "MEMORY(bytes)");
         var pods = podMetrics.Items;
         if (pods is null
             || pods.Any() is false
@@ -50,43 +51,56 @@ public class MetricsService(KubeClient kubeClient)
         {
             return;
         }
-        
-        // TODO - this does not always show accurate information, sometimes pod names fluctuate
-        // could be a possible bug due to pods having multiple replica's
 
         foreach (var pod in pods)
         {
             var podName = pod.Metadata.Name;
-            var containerName = "";
-            var cpuUsage = "";
-            var memUsage = "";
-            // Console.WriteLine($"Pod name: {pod.Metadata.Name}");
+            var containerNames = new StringBuilder();
+            var cpuUsages = new StringBuilder();
+            var memUsages = new StringBuilder();
             foreach (var container in pod.Containers)
             {
-                // Console.WriteLine($"Container name: {container.Name}");
-                containerName = container.Name;
+                containerNames.Append(container.Name + " ");
                 foreach (var metric in container.Usage)
                 {
                     switch (metric.Key)
                     {
                         case "cpu":
                             // Convert form n to m
-                            // Console.WriteLine($"{metric.Value * 1024:N0}m");
-                            cpuUsage = $"{metric.Value * 1024:N0}m";
+                            cpuUsages.Append(ConvertToHumanReadable(metric) + " ");
                             break;
                         case "memory":
                             // Convert from Ki to Mi
-                            // Console.WriteLine($"{metric.Value / 1024 / 1024:#}Mi");
-                            memUsage = $"{metric.Value / 1024 / 1024:#}Mi";
+                            memUsages.Append(ConvertToHumanReadable(metric) + " ");
                             break;
                     }
                 }
             }
 
-            table.AddRow(namespaceName, podName, containerName, cpuUsage, memUsage);
+            table.AddRow(
+                namespaceName,
+                podName,
+                containerNames.ToString().Replace(" ", ", ").TrimEnd(',', ' '),
+                cpuUsages.ToString().Replace(" ", ", ").TrimEnd(',', ' '),
+                memUsages.ToString().Replace(" ", ", ").TrimEnd(',', ' ')
+            );
         }
 
         table.Options.EnableCount = false;
         table.Write();
+    }
+
+    private string ConvertToHumanReadable(KeyValuePair<string, ResourceQuantity> metric)
+    {
+        return metric.Key switch
+        {
+            "cpu" =>
+                // Convert form n to m
+                $"{metric.Value * 1024:N0}m",
+            "memory" =>
+                // Convert from Ki to Mi
+                $"{metric.Value / 1024 / 1024:#}Mi",
+            _ => "Invalid resource type"
+        };
     }
 }

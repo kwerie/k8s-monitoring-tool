@@ -25,27 +25,22 @@ public class ClusterNamespaceService(
 
     public void CheckForDeletedNamespaces(IEnumerable<V1Namespace> fetchedNamespaces)
     {
-        // TODO - optimize
-        var currentNamespaceNames = clusterNamespaceRepository.GetAll().Select(ns => ns.Name).ToList();
+        var currentNamespaceNames = clusterNamespaceRepository.GetAll().Select(cNs => cNs.Name).ToList();
         var fetchedNamespaceNames = fetchedNamespaces.Select(fNs => fNs.Metadata.Name).ToList();
         var difference = currentNamespaceNames.Except(fetchedNamespaceNames).ToList();
 
-        foreach (var diff in difference)
+        foreach (var clusterNamespace in difference.Select(clusterNamespaceRepository.GetByName).OfType<ClusterNamespace>())
         {
-            var clusterNamespace = clusterNamespaceRepository.GetByName(diff);
-            if (clusterNamespace is not null)
+            clusterNamespaceEntityFactory.Update(clusterNamespace, new V1Namespace
             {
-                clusterNamespaceEntityFactory.Update(clusterNamespace, new V1Namespace
+                Metadata = new V1ObjectMeta
                 {
-                    Metadata = new V1ObjectMeta
-                    {
-                        CreationTimestamp =
-                            clusterNamespace
-                                .CreationTimestamp, // Otherwise the CreationTimestamp will be null in the database.
-                        DeletionTimestamp = DateTime.Now
-                    }
-                });
-            }
+                    CreationTimestamp =
+                        clusterNamespace
+                            .CreationTimestamp, // Otherwise the CreationTimestamp will be null in the database.
+                    DeletionTimestamp = DateTime.Now
+                }
+            });
         }
     }
 }
